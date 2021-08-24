@@ -63,6 +63,8 @@ func (r *BackplaneConfigReconciler) ensureUnstructuredResource(bpc *backplanev1a
 	case "CustomResourceDefinition", "HiveConfig":
 		// skip update
 		return ctrl.Result{}, nil
+	case "Deployment":
+		desired, needsUpdate = foundation.ValidateDeployment(found, u)
 	default:
 		log.Info("Could not validate unstructured resource. Skipping update.", "Type", found.GetKind())
 		return ctrl.Result{}, nil

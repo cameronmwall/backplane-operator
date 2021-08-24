@@ -100,12 +100,12 @@ func ValidateDeployment(m *v1alpha1.BackplaneConfig, overrides map[string]string
 	// }
 
 	// verify node selectors
-	// desiredSelectors := m.Spec.NodeSelector
-	// if !utils.ContainsMap(pod.NodeSelector, desiredSelectors) {
-	// 	log.Info("Enforcing node selectors from CR spec")
-	// 	pod.NodeSelector = desiredSelectors
-	// 	needsUpdate = true
-	// }
+	desiredSelectors := m.Spec.NodeSelector
+	if !utils.ContainsMap(pod.NodeSelector, desiredSelectors) {
+		log.Info("Enforcing node selectors from CR spec")
+		pod.NodeSelector = desiredSelectors
+		needsUpdate = true
+	}
 	// // verify replica count
 	// if *found.Spec.Replicas != getReplicaCount(m) {
 	// 	log.Info("Enforcing number of replicas")

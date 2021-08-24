@@ -146,7 +146,11 @@ func injectValuesOverrides(values *Values, backplaneConfig *v1alpha1.BackplaneCo
 
 	values.Global.Namespace = backplaneConfig.Namespace
 
+	values.Global.PullSecret = backplaneConfig.Spec.ImagePullSecret
+
 	values.HubConfig.ReplicaCount = 1
+
+	values.HubConfig.NodeSelector = backplaneConfig.Spec.NodeSelector
 
 	values.Org = "open-cluster-management"
 
