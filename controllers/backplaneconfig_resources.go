@@ -9,8 +9,10 @@ import (
 	backplanev1alpha1 "github.com/open-cluster-management/backplane-operator/api/v1alpha1"
 	"github.com/open-cluster-management/backplane-operator/pkg/foundation"
 	"github.com/open-cluster-management/backplane-operator/pkg/utils"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -54,17 +56,38 @@ func (r *BackplaneConfigReconciler) ensureUnstructuredResource(bpc *backplanev1a
 	// Validate object based on name
 	var desired *unstructured.Unstructured
 	var needsUpdate bool
+	var desiredDep *appsv1.Deployment
+	var uDeployment appsv1.Deployment
+	var foundDeployment appsv1.Deployment
 
 	switch found.GetKind() {
 	case "ClusterManager":
 		desired, needsUpdate = foundation.ValidateSpec(found, u)
 	case "ClusterRole":
 		desired, needsUpdate = utils.ValidateClusterRoleRules(found, u)
+	case "Deployment":
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.UnstructuredContent(), &uDeployment)
+		if err != nil {
+			log.Error(err, "Failed to unmarshal Deployment")
+			return ctrl.Result{}, err
+		}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(found.UnstructuredContent(), &foundDeployment)
+		if err != nil {
+			log.Error(err, "Failed to unmarshal Deployment")
+			return ctrl.Result{}, err
+		}
+		desiredDep, needsUpdate = foundation.ValidateDeployment(bpc, r.Images, &uDeployment, &foundDeployment)
+		desiredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&desiredDep)
+		desired = &unstructured.Unstructured{Object: desiredMap}
+		if err != nil {
+			log.Error(err, "Failed to unmarshal Deployment")
+			return ctrl.Result{}, err
+		}
+
 	case "CustomResourceDefinition", "HiveConfig":
 		// skip update
 		return ctrl.Result{}, nil
-	case "Deployment":
-		desired, needsUpdate = foundation.ValidateDeployment(found, u)
+
 	default:
 		log.Info("Could not validate unstructured resource. Skipping update.", "Type", found.GetKind())
 		return ctrl.Result{}, nil

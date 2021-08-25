@@ -9,7 +9,7 @@ import (
 	"github.com/open-cluster-management/backplane-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
+	// "k8s.io/apimachinery/pkg/api/equality"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -72,7 +72,7 @@ func ValidateDeployment(m *v1alpha1.BackplaneConfig, overrides map[string]string
 	found := dep.DeepCopy()
 
 	pod := &found.Spec.Template.Spec
-	container := &found.Spec.Template.Spec.Containers[0]
+	// container := &found.Spec.Template.Spec.Containers[0]
 	needsUpdate := false
 
 	// verify image pull secret
@@ -86,11 +86,11 @@ func ValidateDeployment(m *v1alpha1.BackplaneConfig, overrides map[string]string
 	// }
 
 	// verify image repository and suffix
-	if container.Image != Image(overrides) {
-		log.Info("Enforcing image repo and suffix from CR spec")
-		container.Image = Image(overrides)
-		needsUpdate = true
-	}
+	// if container.Image != Image(overrides) {
+	// 	log.Info("Enforcing image repo and suffix from CR spec")
+	// 	container.Image = Image(overrides)
+	// 	needsUpdate = true
+	// }
 
 	// verify image pull policy
 	// if container.ImagePullPolicy != utils.GetImagePullPolicy(m) {
@@ -106,6 +106,12 @@ func ValidateDeployment(m *v1alpha1.BackplaneConfig, overrides map[string]string
 		pod.NodeSelector = desiredSelectors
 		needsUpdate = true
 	}
+
+	if !reflect.DeepEqual(pod.Tolerations, m.Spec.Tolerations) {
+		log.Info("Enforcing spec tolerations")
+		pod.Tolerations = m.Spec.Tolerations
+		needsUpdate = true
+	}
 	// // verify replica count
 	// if *found.Spec.Replicas != getReplicaCount(m) {
 	// 	log.Info("Enforcing number of replicas")
@@ -114,45 +120,39 @@ func ValidateDeployment(m *v1alpha1.BackplaneConfig, overrides map[string]string
 	// 	needsUpdate = true
 	// }
 
-	if !reflect.DeepEqual(container.Args, utils.GetContainerArgs(expected)) {
-		log.Info("Enforcing container arguments")
-		args := utils.GetContainerArgs(expected)
-		container.Args = args
-		needsUpdate = true
-	}
+	// if !reflect.DeepEqual(container.Args, utils.GetContainerArgs(expected)) {
+	// 	log.Info("Enforcing container arguments")
+	// 	args := utils.GetContainerArgs(expected)
+	// 	container.Args = args
+	// 	needsUpdate = true
+	// }
 
-	if !reflect.DeepEqual(container.Env, utils.GetContainerEnvVars(expected)) {
-		log.Info("Enforcing container environment variables")
-		envs := utils.GetContainerEnvVars(expected)
-		container.Env = envs
-		needsUpdate = true
-	}
+	// if !reflect.DeepEqual(container.Env, utils.GetContainerEnvVars(expected)) {
+	// 	log.Info("Enforcing container environment variables")
+	// 	envs := utils.GetContainerEnvVars(expected)
+	// 	container.Env = envs
+	// 	needsUpdate = true
+	// }
 
-	if !reflect.DeepEqual(pod.Tolerations, defaultTolerations()) {
-		log.Info("Enforcing spec tolerations")
-		pod.Tolerations = defaultTolerations()
-		needsUpdate = true
-	}
+	// if !reflect.DeepEqual(container.VolumeMounts, utils.GetContainerVolumeMounts(expected)) {
+	// 	log.Info("Enforcing container volume mounts")
+	// 	vms := utils.GetContainerVolumeMounts(expected)
+	// 	container.VolumeMounts = vms
+	// 	needsUpdate = true
+	// }
 
-	if !reflect.DeepEqual(container.VolumeMounts, utils.GetContainerVolumeMounts(expected)) {
-		log.Info("Enforcing container volume mounts")
-		vms := utils.GetContainerVolumeMounts(expected)
-		container.VolumeMounts = vms
-		needsUpdate = true
-	}
+	// expectedRequestResourceList := utils.GetContainerRequestResources(expected)
+	// if !reflect.DeepEqual(container.Resources.Requests.Cpu().MilliValue(), expectedRequestResourceList.Cpu().MilliValue()) {
+	// 	log.Info("Enforcing container resource requests and limits")
+	// 	container.Resources.Requests = expectedRequestResourceList
+	// 	needsUpdate = true
+	// }
 
-	expectedRequestResourceList := utils.GetContainerRequestResources(expected)
-	if !reflect.DeepEqual(container.Resources.Requests.Cpu().MilliValue(), expectedRequestResourceList.Cpu().MilliValue()) {
-		log.Info("Enforcing container resource requests and limits")
-		container.Resources.Requests = expectedRequestResourceList
-		needsUpdate = true
-	}
-
-	if !equality.Semantic.DeepEqual(pod.Volumes, expected.Spec.Template.Spec.Volumes) {
-		log.Info("Enforcing pod volumes")
-		pod.Volumes = expected.Spec.Template.Spec.Volumes
-		needsUpdate = true
-	}
+	// if !equality.Semantic.DeepEqual(pod.Volumes, expected.Spec.Template.Spec.Volumes) {
+	// 	log.Info("Enforcing pod volumes")
+	// 	pod.Volumes = expected.Spec.Template.Spec.Volumes
+	// 	needsUpdate = true
+	// }
 
 	return found, needsUpdate
 }

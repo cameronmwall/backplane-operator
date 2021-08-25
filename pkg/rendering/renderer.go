@@ -152,6 +152,14 @@ func injectValuesOverrides(values *Values, backplaneConfig *v1alpha1.BackplaneCo
 
 	values.HubConfig.NodeSelector = backplaneConfig.Spec.NodeSelector
 
+	if utils.ProxyEnvVarsAreSet() {
+		proxyVar := map[string]string{}
+		proxyVar["HTTP_PROXY"] = os.Getenv("HTTP_PROXY")
+		proxyVar["HTTPS_PROXY"] = os.Getenv("HTTPS_PROXY")
+		proxyVar["NO_PROXY"] = os.Getenv("NO_PROXY")
+		values.HubConfig.ProxyConfigs = proxyVar
+	}
+
 	values.Org = "open-cluster-management"
 
 	// TODO: Define all overrides

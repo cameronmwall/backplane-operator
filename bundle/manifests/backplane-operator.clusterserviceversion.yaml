@@ -12,6 +12,9 @@ metadata:
           },
           "spec": {
             "foo": "bar"
+            "nodeSelector": {
+              "beta.kubernetes.io/arch": "amd64"
+            }
           }
         }
       ]

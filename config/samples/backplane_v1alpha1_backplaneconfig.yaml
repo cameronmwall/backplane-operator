@@ -6,5 +6,9 @@ spec:
   # Add fields here
   foo: bar
   nodeSelector: 
-    type: test
+    beta.kubernetes.io/arch: amd64
   imagePullSecret: test
+  tolerations:
+  - effect: NoSchedule
+    key: dedicated
+    operator: Exists
