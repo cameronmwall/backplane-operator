@@ -46,10 +46,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	// "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	// "sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -268,19 +272,26 @@ func (r *MultiClusterEngineReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return result, err
 	}
 
+	// testClientGoStuff(ctx, "pkg/templates/kubeconfig")
+	log.Info("I most certainly reconciled")
+
 	r.StatusManager.AddCondition(status.NewCondition(backplanev1.MultiClusterEngineProgressing, metav1.ConditionTrue, status.DeploySuccessReason, "All components deployed"))
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *MultiClusterEngineReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *MultiClusterEngineReconciler) SetupWithManager(mgr ctrl.Manager, mirrorCluster cluster.Cluster) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&backplanev1.MultiClusterEngine{}).
 		WithEventFilter(predicate.Or(predicate.GenerationChangedPredicate{}, predicate.LabelChangedPredicate{}, predicate.AnnotationChangedPredicate{})).
 		Watches(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 			OwnerType: &backplanev1.MultiClusterEngine{},
 		}).
+		Watches(
+			source.NewKindWithCache(&corev1.Namespace{}, mirrorCluster.GetCache()),
+			&handler.EnqueueRequestForObject{},
+		).
 		Watches(&source.Kind{Type: &hiveconfig.HiveConfig{}}, &handler.Funcs{
 			DeleteFunc: func(e event.DeleteEvent, q workqueue.RateLimitingInterface) {
 				labels := e.Object.GetLabels()
@@ -1011,4 +1022,59 @@ func (r *MultiClusterEngineReconciler) getClusterIngressDomain(ctx context.Conte
 		return "", fmt.Errorf("Domain not found or empty in Ingress")
 	}
 	return clusterIngress.Spec.Domain, nil
+}
+
+// func testClientGoStuff(string kubeLocation){
+
+// 	foreignConfig, _ := config.GetConfig()
+// 	foreignClient, _ := client.New(foreignConfig, client.Options{})
+// 	foreignClient.Create(context.Background(), &corev1.Namespace{
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name: "camTest",
+// 		},
+// 		Spec: corev1.NamespaceSpec{},
+// 	})
+// }
+
+func testClientGoStuff(ctx context.Context, kubeLocation string) {
+	log := log.FromContext(ctx)
+	foreignConfig, err := clientcmd.BuildConfigFromFlags("", kubeLocation)
+	if err != nil {
+		log.Error(err, "not able to build config")
+	}
+	// mgr, err := ctrl.NewManager(foreignConfig, ctrl.Options{
+	// 	MetricsBindAddress: "0",
+	// })
+	// if err != nil {
+	// 	log.Error(err, "not able to build manager")
+	// }
+	// foreignClient := mgr.GetClient()
+
+	foreignClient, err := client.New(foreignConfig, client.Options{})
+	if err != nil {
+		log.Error(err, "not able to build client")
+	}
+	err = foreignClient.Create(context.Background(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cam-test",
+		},
+		Spec: corev1.NamespaceSpec{},
+	})
+	if err != nil {
+		log.Error(err, "not able to build namespace")
+	}
+
+	namespaceList := &corev1.NamespaceList{}
+
+	err = foreignClient.List(context.Background(), namespaceList)
+	if err != nil {
+		log.Error(err, "not able to list namespaces")
+	}
+
+	for _, n := range namespaceList.Items {
+		log.Info(n.Name)
+	}
+
+	log.Info("made it through everything")
+
 }

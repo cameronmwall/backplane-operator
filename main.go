@@ -53,6 +53,9 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	apiregistrationv1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	// "sigs.k8s.io/controller-runtime/pkg/cache"
+	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -133,12 +136,27 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
+	foreignConfig, err := clientcmd.BuildConfigFromFlags("", "pkg/templates/kubeconfig")
+	if err != nil {
+		setupLog.Error(err, "unable to start config")
+		os.Exit(1)
+	}
 
+	foreignCluster, err := cluster.New(foreignConfig)
+	if err != nil {
+		setupLog.Error(err, "unable to start cluster")
+		os.Exit(1)
+	}
+	err = mgr.Add(foreignCluster)
+	if err != nil {
+		setupLog.Error(err, "unable to add cluster")
+		os.Exit(1)
+	}
 	if err = (&controllers.MultiClusterEngineReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		StatusManager: &status.StatusTracker{Client: mgr.GetClient()},
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr, foreignCluster); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MultiClusterEngine")
 		os.Exit(1)
 	}
