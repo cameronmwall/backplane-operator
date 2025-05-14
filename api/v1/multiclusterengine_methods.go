@@ -30,8 +30,8 @@ const (
 	ClusterAPIProviderAWSPreview     = "cluster-api-provider-aws-preview"
 	ClusterAPIProviderMetal          = "cluster-api-provider-metal3"
 	ClusterAPIProviderMetalPreview   = "cluster-api-provider-metal3-preview"
-	ClusterAPIProviderOA          = "cluster-api-provider-openshift-assisted"
-	ClusterAPIProviderOAPreview   = "cluster-api-provider-openshift-assisted-preview"
+	ClusterAPIProviderOA             = "cluster-api-provider-openshift-assisted"
+	ClusterAPIProviderOAPreview      = "cluster-api-provider-openshift-assisted-preview"
 	ClusterLifecycle                 = "cluster-lifecycle"
 	ClusterManager                   = "cluster-manager"
 	ClusterProxyAddon                = "cluster-proxy-addon"
@@ -98,8 +98,6 @@ These components are candidates for pruning when the stable version replaces the
 */
 var PreviewComponents = []string{
 	ClusterAPIPreview,
-	ClusterAPIProviderAWSPreview,
-	ClusterAPIProviderOAPreview,
 	HyperShiftPreview,
 	ImageBasedInstallOperatorPreview,
 	ManagedServiceAccountPreview,

@@ -572,13 +572,48 @@ func (r *MultiClusterEngineReconciler) ensureClusterAPIProviderMetal(ctx context
 	return ctrl.Result{}, nil
 }
 
+func (r *MultiClusterEngineReconciler) ensureNoClusterAPIProviderMetal(ctx context.Context,
+	mce *backplanev1.MultiClusterEngine) (ctrl.Result, error) {
+	namespacedName := types.NamespacedName{Name: "capm3-controller-manager", Namespace: mce.Spec.TargetNamespace}
+
+	// Ensure that the InternalHubComponent CR instance is deleted for component in MCE.
+	if result, err := r.ensureNoInternalEngineComponent(ctx, mce,
+		backplanev1.ClusterAPIProviderMetalPreview); (result != ctrl.Result{}) || err != nil {
+		return result, err
+	}
+
+	// Renders all templates from charts
+	chartPath := r.fetchChartOrCRDPath(backplanev1.ClusterAPIProviderMetalPreview)
+	templates, errs := renderer.RenderChart(chartPath, mce, r.CacheSpec.ImageOverrides, r.CacheSpec.TemplateOverrides)
+
+	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Info(err.Error())
+		}
+		return ctrl.Result{RequeueAfter: requeuePeriod}, nil
+	}
+
+	r.StatusManager.RemoveComponent(toggle.EnabledStatus(namespacedName))
+	r.StatusManager.AddComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
+
+	// Deletes all templates
+	for _, template := range templates {
+		result, err := r.deleteTemplate(ctx, mce, template)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to delete template: %s", template.GetName()))
+			return result, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
 func (r *MultiClusterEngineReconciler) ensureClusterAPIProviderOA(ctx context.Context, mce *backplanev1.MultiClusterEngine) (
 	ctrl.Result, error) {
 
 	namespacedName := types.NamespacedName{Name: "capoa-bootstrap-controller-manager", Namespace: mce.Spec.TargetNamespace}
 	r.StatusManager.RemoveComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
 	r.StatusManager.AddComponent(toggle.EnabledStatus(namespacedName))
-	namespacedName := types.NamespacedName{Name: "capoa-controlplane-controller-manager", Namespace: mce.Spec.TargetNamespace}
+	namespacedName = types.NamespacedName{Name: "capoa-controlplane-controller-manager", Namespace: mce.Spec.TargetNamespace}
 	r.StatusManager.RemoveComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
 	r.StatusManager.AddComponent(toggle.EnabledStatus(namespacedName))
 
@@ -618,9 +653,11 @@ func (r *MultiClusterEngineReconciler) ensureClusterAPIProviderOA(ctx context.Co
 func (r *MultiClusterEngineReconciler) ensureNoClusterAPIProviderOA(ctx context.Context,
 	mce *backplanev1.MultiClusterEngine) (ctrl.Result, error) {
 	namespacedName := types.NamespacedName{Name: "capoa-bootstrap-controller-manager", Namespace: mce.Spec.TargetNamespace}
-	namespacedName := types.NamespacedName{Name: "capoa-controlplane-controller-manager", Namespace: mce.Spec.TargetNamespace}
-
-
+	r.StatusManager.RemoveComponent(toggle.EnabledStatus(namespacedName))
+	r.StatusManager.AddComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
+	namespacedName = types.NamespacedName{Name: "capoa-controlplane-controller-manager", Namespace: mce.Spec.TargetNamespace}
+	r.StatusManager.RemoveComponent(toggle.EnabledStatus(namespacedName))
+	r.StatusManager.AddComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
 
 	// Ensure that the InternalHubComponent CR instance is deleted for component in MCE.
 	if result, err := r.ensureNoInternalEngineComponent(ctx, mce,
@@ -638,9 +675,6 @@ func (r *MultiClusterEngineReconciler) ensureNoClusterAPIProviderOA(ctx context.
 		}
 		return ctrl.Result{RequeueAfter: requeuePeriod}, nil
 	}
-
-	r.StatusManager.RemoveComponent(toggle.EnabledStatus(namespacedName))
-	r.StatusManager.AddComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
 
 	// Deletes all templates
 	for _, template := range templates {
