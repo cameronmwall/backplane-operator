@@ -30,6 +30,8 @@ const (
 	ClusterAPIProviderAWSPreview     = "cluster-api-provider-aws-preview"
 	ClusterAPIProviderMetal          = "cluster-api-provider-metal3"
 	ClusterAPIProviderMetalPreview   = "cluster-api-provider-metal3-preview"
+	ClusterAPIProviderOA          = "cluster-api-provider-openshift-assisted"
+	ClusterAPIProviderOAPreview   = "cluster-api-provider-openshift-assisted-preview"
 	ClusterLifecycle                 = "cluster-lifecycle"
 	ClusterManager                   = "cluster-manager"
 	ClusterProxyAddon                = "cluster-proxy-addon"
@@ -53,6 +55,7 @@ var allComponents = []string{
 	ClusterAPIPreview,
 	ClusterAPIProviderAWS,
 	ClusterAPIProviderAWSPreview,
+	ClusterAPIProviderOAPreview,
 	ClusterLifecycle,
 	ClusterManager,
 	ClusterProxyAddon,
@@ -75,6 +78,7 @@ var MCEComponents = []string{
 	AssistedService,
 	ClusterAPI,
 	ClusterAPIProviderAWS,
+	ClusterAPIProviderOAPreview,
 	ClusterLifecycle,
 	ClusterManager,
 	ClusterProxyAddon,
@@ -95,6 +99,7 @@ These components are candidates for pruning when the stable version replaces the
 var PreviewComponents = []string{
 	ClusterAPIPreview,
 	ClusterAPIProviderAWSPreview,
+	ClusterAPIProviderOAPreview,
 	HyperShiftPreview,
 	ImageBasedInstallOperatorPreview,
 	ManagedServiceAccountPreview,

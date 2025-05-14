@@ -64,6 +64,7 @@ var offComponents = []string{
 	backplanev1.ClusterAPI,
 	backplanev1.ClusterAPIProviderAWS,
 	backplanev1.ClusterAPIProviderMetalPreview,
+	backplanev1.ClusterAPIProviderOAPreview,
 	backplanev1.ImageBasedInstallOperator,
 }
 

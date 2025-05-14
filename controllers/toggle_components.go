@@ -572,9 +572,55 @@ func (r *MultiClusterEngineReconciler) ensureClusterAPIProviderMetal(ctx context
 	return ctrl.Result{}, nil
 }
 
-func (r *MultiClusterEngineReconciler) ensureNoClusterAPIProviderMetal(ctx context.Context,
+func (r *MultiClusterEngineReconciler) ensureClusterAPIProviderOA(ctx context.Context, mce *backplanev1.MultiClusterEngine) (
+	ctrl.Result, error) {
+
+	namespacedName := types.NamespacedName{Name: "capoa-bootstrap-controller-manager", Namespace: mce.Spec.TargetNamespace}
+	r.StatusManager.RemoveComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
+	r.StatusManager.AddComponent(toggle.EnabledStatus(namespacedName))
+	namespacedName := types.NamespacedName{Name: "capoa-controlplane-controller-manager", Namespace: mce.Spec.TargetNamespace}
+	r.StatusManager.RemoveComponent(toggle.DisabledStatus(namespacedName, []*unstructured.Unstructured{}))
+	r.StatusManager.AddComponent(toggle.EnabledStatus(namespacedName))
+
+	// Ensure that the InternalHubComponent CR instance is created for component in MCE.
+	if result, err := r.ensureInternalEngineComponent(ctx, mce, backplanev1.ClusterAPIProviderOAPreview); err != nil {
+		return result, err
+	}
+
+	// Renders all templates from charts
+	chartPath := r.fetchChartOrCRDPath(backplanev1.ClusterAPIProviderOAPreview)
+	templates, errs := renderer.RenderChart(chartPath, mce, r.CacheSpec.ImageOverrides, r.CacheSpec.TemplateOverrides)
+
+	if len(errs) > 0 {
+		for _, err := range errs {
+			log.Info(err.Error())
+		}
+		return ctrl.Result{RequeueAfter: requeuePeriod}, nil
+	}
+
+	// Apply deployment config overrides
+	if result, err := r.applyComponentDeploymentOverrides(mce, templates, backplanev1.ClusterAPIProviderOAPreview); err != nil {
+		return result, err
+	}
+
+	// Applies all templates
+	for _, template := range templates {
+		applyReleaseVersionAnnotation(template)
+		result, err := r.applyTemplate(ctx, mce, template)
+		if err != nil {
+			return result, err
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *MultiClusterEngineReconciler) ensureNoClusterAPIProviderOA(ctx context.Context,
 	mce *backplanev1.MultiClusterEngine) (ctrl.Result, error) {
-	namespacedName := types.NamespacedName{Name: "capm3-controller-manager", Namespace: mce.Spec.TargetNamespace}
+	namespacedName := types.NamespacedName{Name: "capoa-bootstrap-controller-manager", Namespace: mce.Spec.TargetNamespace}
+	namespacedName := types.NamespacedName{Name: "capoa-controlplane-controller-manager", Namespace: mce.Spec.TargetNamespace}
+
+
 
 	// Ensure that the InternalHubComponent CR instance is deleted for component in MCE.
 	if result, err := r.ensureNoInternalEngineComponent(ctx, mce,
